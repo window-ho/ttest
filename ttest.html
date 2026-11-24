@@ -326,23 +326,112 @@ display: flex;
 flex-direction: column;
 overflow-y: auto;
 }
+.input-mode-bar {
+display: flex;
+gap: 6px;
+margin-bottom: 6px;
+}
+.input-mode-btn {
+flex: 1;
+padding: 6px;
+border-radius: 4px;
+border: 1px solid #37474f;
+background: #1e2428;
+color: #cfd8dc;
+font-size: 0.74rem;
+font-weight: bold;
+cursor: pointer;
+}
+.input-mode-btn.active-aim {
+background: #00695c;
+border-color: #4db6ac;
+color: #ffffff;
+}
+.input-mode-btn.active-touch {
+background: #b71c1c;
+border-color: #ff8a80;
+color: #ffffff;
+}
 .viewfinder {
 position: relative;
 background-color: #000;
-height: 185px;
-min-height: 165px;
+height: 205px;
+min-height: 180px;
 display: flex;
 justify-content: center;
 align-items: center;
 overflow: hidden;
 border-radius: 6px;
-margin-bottom: 8px;
+margin-bottom: 6px;
 border: 1px solid #333;
 }
 .viewfinder video {
 width: 100%;
 height: 100%;
 object-fit: cover;
+transform-origin: center center;
+transition: transform 0.15s ease-out;
+}
+.zoom-bar {
+display: flex;
+align-items: center;
+gap: 5px;
+margin-bottom: 6px;
+background: #1c1c1c;
+border: 1px solid #333;
+border-radius: 5px;
+padding: 4px 6px;
+}
+.zoom-bar-label {
+font-size: 0.72rem;
+color: #b0bec5;
+font-weight: bold;
+white-space: nowrap;
+margin-right: 2px;
+}
+.zoom-btn {
+flex: 1;
+padding: 4px 6px;
+border-radius: 4px;
+border: 1px solid #455a64;
+background: #263238;
+color: #eceff1;
+font-size: 0.74rem;
+font-weight: bold;
+cursor: pointer;
+}
+.zoom-btn.active-zoom {
+background: #0277bd;
+border-color: #4fc3f7;
+color: #ffffff;
+}
+#cameraTouchCanvas {
+display: none;
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+z-index: 4;
+touch-action: none;
+cursor: crosshair;
+}
+.projected-area-badge {
+display: none;
+position: absolute;
+top: 8px;
+left: 8px;
+right: 8px;
+z-index: 5;
+pointer-events: none;
+background: rgba(183, 28, 28, 0.86);
+border: 1px solid rgba(255, 138, 128, 0.9);
+color: #ffffff;
+padding: 4px 8px;
+border-radius: 4px;
+font-size: 0.76rem;
+font-weight: bold;
+text-align: center;
 }
 .crosshair-h {
 position: absolute;
@@ -353,6 +442,7 @@ height: 2px;
 background-color: rgba(0, 255, 204, 0.85);
 transform: translateY(-50%);
 pointer-events: none;
+z-index: 2;
 }
 .crosshair-v {
 position: absolute;
@@ -363,6 +453,7 @@ height: 100%;
 background-color: rgba(0, 255, 204, 0.85);
 transform: translateX(-50%);
 pointer-events: none;
+z-index: 2;
 }
 .crosshair-center {
 position: absolute;
@@ -374,6 +465,7 @@ border: 2px solid #00ffcc;
 border-radius: 50%;
 transform: translate(-50%, -50%);
 pointer-events: none;
+z-index: 2;
 }
 .pos-mode-bar {
 display: flex;
@@ -423,6 +515,43 @@ color: #ffffff;
 border-radius: 4px;
 text-align: center;
 font-size: 0.78rem;
+}
+.height-inputs-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 6px;
+margin-bottom: 6px;
+}
+.height-input-box {
+background: #1e1e1e;
+border: 1px solid #383838;
+border-radius: 6px;
+padding: 5px 6px;
+}
+.height-input-box label {
+color: #b0bec5;
+font-size: 0.68rem;
+margin-bottom: 2px;
+}
+.height-input-box input {
+background: #2b2b2b;
+border: 1px solid #4a4a4a;
+color: #fff;
+text-align: center;
+padding: 5px;
+font-size: 0.85rem;
+}
+.effective-height-bar {
+background: #1a2622;
+border: 1px solid #2e594b;
+border-radius: 5px;
+padding: 5px 8px;
+margin-bottom: 6px;
+font-size: 0.72rem;
+color: #a5d6a7;
+display: flex;
+justify-content: space-between;
+align-items: center;
 }
 .poly-workspace {
 display: grid;
@@ -767,11 +896,26 @@ line-height: 1.4;
 <div class="modal-overlay" id="measureModal">
 <div class="measure-modal-content">
 <h3 style="margin-bottom:6px; color:#00ffcc; text-align:center; font-size:1rem;">제자리 2~7점+ 자동 면적 측정기</h3>
+
+<div class="input-mode-bar">
+<button type="button" id="btnModeAim" class="input-mode-btn active-aim" onclick="setMeasureInputMode('aim')">🎯 기존 조준 측정</button>
+<button type="button" id="btnModeTouch" class="input-mode-btn" onclick="setMeasureInputMode('touch')">👆 카메라 다각형 터치 (3~6점+)</button>
+</div>
+
 <div class="viewfinder" id="measureViewfinder">
 <video id="measureCameraStream" autoplay playsinline muted></video>
-<div class="crosshair-h"></div>
-<div class="crosshair-v"></div>
-<div class="crosshair-center"></div>
+<canvas id="cameraTouchCanvas"></canvas>
+<div class="projected-area-badge" id="projectedAreaBadge">카메라 터치: 점을 3개 이상 누르세요 (0점)</div>
+<div class="crosshair-h" id="aimCrosshairH"></div>
+<div class="crosshair-v" id="aimCrosshairV"></div>
+<div class="crosshair-center" id="aimCrosshairCenter"></div>
+</div>
+
+<div class="zoom-bar">
+<span class="zoom-bar-label">🔍 화면 확대</span>
+<button type="button" id="btnZoom10" class="zoom-btn active-zoom" onclick="setCameraZoom(1.0)">1.0x</button>
+<button type="button" id="btnZoom15" class="zoom-btn" onclick="setCameraZoom(1.5)">1.5x</button>
+<button type="button" id="btnZoom20" class="zoom-btn" onclick="setCameraZoom(2.0)">2.0x</button>
 </div>
 
 <div class="pos-mode-bar">
@@ -784,15 +928,25 @@ line-height: 1.4;
 <input type="number" id="outsideCorrectionFactor" value="0.75" min="0.1" max="1.5" step="0.05" oninput="calculateAutoArea()">
 </div>
 
-<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-<div style="flex:0.85;">
-<label style="color:#aaa; font-size:0.7rem;">폰 높이(cm)</label>
-<input type="number" id="measurePhoneHeight" value="120" oninput="calculateMeasureDistance()" style="background:#2b2b2b; border:1px solid #444; color:#fff; text-align:center; padding:5px;">
+<div class="height-inputs-grid">
+<div class="height-input-box">
+<label for="measurePhoneHeight">폰 높이(cm)</label>
+<input type="number" id="measurePhoneHeight" value="120" min="0" oninput="onHeightOrTiltChange()">
 </div>
-<div style="flex:1.5; background:#2b2b2b; padding:5px 6px; border-radius:6px; text-align:center;">
+<div class="height-input-box">
+<label for="measureCropHeight">작물 높이(cm)</label>
+<input type="number" id="measureCropHeight" value="0" min="0" placeholder="0(땅기준)" oninput="onHeightOrTiltChange()">
+</div>
+</div>
+
+<div class="effective-height-bar">
+<span>🌱 실제 적용 높이차(폰-작물)</span>
+<strong id="effectiveHeightReadout">120.0 cm (1.20 m)</strong>
+</div>
+
+<div style="background:#2b2b2b; padding:6px 8px; border-radius:6px; text-align:center; margin-bottom:6px;">
 <div style="font-size:0.68rem; color:#aaa;">현재 조준 거리 · 방향</div>
 <div id="measureDistanceResult" style="font-size:13px; font-weight:bold; color:#00ffcc;">0.0 cm (0.00 m) | 0°</div>
-</div>
 </div>
 
 <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.72rem; color:#bbb;">
@@ -803,14 +957,14 @@ line-height: 1.4;
 </div>
 
 <div style="display:flex; gap:6px; margin-bottom:6px;">
-<button type="button" onclick="addAutoPoint()" style="flex:1.5; padding:7px; border:none; border-radius:4px; background:#2e7d32; color:#fff; font-weight:bold; font-size:0.8rem; cursor:pointer;">📍 현재 점 추가 (<span id="pointCountBadge">0</span>점)</button>
+<button type="button" id="btnAddPointAction" onclick="addAutoPoint()" style="flex:1.5; padding:7px; border:none; border-radius:4px; background:#2e7d32; color:#fff; font-weight:bold; font-size:0.8rem; cursor:pointer;">📍 현재 점 추가 (<span id="pointCountBadge">0</span>점)</button>
 <button type="button" onclick="undoAutoPoint()" style="flex:1; padding:7px; border:none; border-radius:4px; background:#555; color:#fff; font-weight:bold; font-size:0.78rem; cursor:pointer;">↩ 마지막 취소</button>
 </div>
 
 <div class="poly-workspace">
 <canvas id="polyPreviewCanvas" width="130" height="130" title="중앙: 내 위치, 번호: 찍힌 점"></canvas>
 <div class="poly-point-list" id="pointListBox">
-한 자리에 서서 한 방향으로 점을 2개(직각폭) 또는 3~7개 이상 찍으세요. 번호를 누르면 현재 거리로 덮어씁니다.
+기존 조준 측정 또는 카메라 다각형 터치(3~6점+)로 점을 추가하세요.
 </div>
 </div>
 
@@ -863,7 +1017,7 @@ Copyright ⓒ <strong>windowho@korea.kr</strong> All Rights Reserved.
 </ul>
 <p><strong>3. 특화 부가 기능</strong></p>
 <ul style="margin-left:20px; margin-bottom:10px;">
-<li><strong>📏 카메라 거리·면적 측정:</strong> 밭 안쪽·바깥쪽 측정 버튼을 선택해 면적(㎡·평)을 계산하고 변 길이(1-2번·2-3번…)를 기록합니다.</li>
+<li><strong>📏 카메라 거리·면적 측정:</strong> 폰 높이와 작물 높이(cm) 차이, 화면 확대(1.0x~2.0x), 기존 조준 측정, 카메라 다각형 터치(3~6점+ 투영)를 선택해 면적(㎡·평)을 계산하고 변 길이(1-2번·2-3번…)를 기록합니다.</li>
 <li><strong>📷 보고서 이미지 생성:</strong> 현장 기록표를 이미지로 변환한 뒤 외부 브라우저로 연결해 저장할 수 있습니다.</li>
 </ul>
 </div>
@@ -895,12 +1049,12 @@ Copyright ⓒ <strong>windowho@korea.kr</strong> All Rights Reserved.
 </div>
 
 <footer>
-<p>슬기로운농가생활 <span id="footerVersion">v1.0.65</span></p>
+<p>슬기로운농가생활 <span id="footerVersion">v1.0.68</span></p>
 <p>Copyright ⓒ <strong>windowho@korea.kr</strong> All Rights Reserved.</p>
 </footer>
 
 <script>
-const APP_VERSION = "v1.0.65";
+const APP_VERSION = "v1.0.68";
 const IMAGE_SITE_URL = "https://window-ho.github.io/verygoodhistory/img.html";
 document.getElementById('footerVersion').innerText = APP_VERSION;
 
@@ -1189,7 +1343,13 @@ alert('손글씨 메모가 저장되었습니다.');
 }
 
 const measureVideo = document.getElementById('measureCameraStream');
+const measureViewfinder = document.getElementById('measureViewfinder');
+const cameraTouchCanvas = document.getElementById('cameraTouchCanvas');
+const cameraTouchCtx = cameraTouchCanvas ? cameraTouchCanvas.getContext('2d') : null;
+const projectedAreaBadge = document.getElementById('projectedAreaBadge');
 const measurePhoneHeightInput = document.getElementById('measurePhoneHeight');
+const measureCropHeightInput = document.getElementById('measureCropHeight');
+const effectiveHeightReadout = document.getElementById('effectiveHeightReadout');
 const measureDistanceResult = document.getElementById('measureDistanceResult');
 const measureSensorStatus = document.getElementById('measureSensorStatus');
 const polyPreviewCanvas = document.getElementById('polyPreviewCanvas');
@@ -1203,6 +1363,108 @@ let lastCalculatedAreaSqm = 0;
 let lastCalculatedAreaText = '';
 let measuredPoints = [];
 let measurePositionMode = 'inside'; // 'inside' | 'outside'
+let measureInputMode = 'aim'; // 'aim' | 'touch'
+let cameraZoomLevel = 1.0;
+let usingNativeHardwareZoom = false;
+
+function getPhoneHeightCm() {
+const v = parseFloat(measurePhoneHeightInput ? measurePhoneHeightInput.value : 120);
+return isNaN(v) ? 0 : Math.max(0, v);
+}
+
+function getCropHeightCm() {
+const v = parseFloat(measureCropHeightInput ? measureCropHeightInput.value : 0);
+return isNaN(v) ? 0 : Math.max(0, v);
+}
+
+function getEffectiveHeightCm() {
+return Math.max(0, getPhoneHeightCm() - getCropHeightCm());
+}
+
+function updateEffectiveHeightDisplay() {
+const effCm = getEffectiveHeightCm();
+const cropCm = getCropHeightCm();
+if (effectiveHeightReadout) {
+const cropTag = cropCm > 0 ? ` · 작물 ${cropCm.toFixed(0)}cm 반영` : ' · 땅기준';
+effectiveHeightReadout.innerText = `${effCm.toFixed(1)} cm (${(effCm / 100).toFixed(2)} m)${cropTag}`;
+}
+}
+
+async function setCameraZoom(zoomVal) {
+cameraZoomLevel = zoomVal;
+const mapBtn = { '1': 'btnZoom10', '1.5': 'btnZoom15', '2': 'btnZoom20' };
+['btnZoom10', 'btnZoom15', 'btnZoom20'].forEach(id => {
+const el = document.getElementById(id);
+if (el) el.classList.remove('active-zoom');
+});
+const activeBtn = document.getElementById(mapBtn[String(zoomVal)]);
+if (activeBtn) activeBtn.classList.add('active-zoom');
+
+usingNativeHardwareZoom = false;
+try {
+if (measureVideo && measureVideo.srcObject) {
+const track = measureVideo.srcObject.getVideoTracks()[0];
+if (track && typeof track.getCapabilities === 'function') {
+const caps = track.getCapabilities();
+if (caps && caps.zoom) {
+const clamped = Math.min(caps.zoom.max, Math.max(caps.zoom.min, zoomVal));
+await track.applyConstraints({ advanced: [{ zoom: clamped }] });
+usingNativeHardwareZoom = true;
+}
+}
+}
+} catch (err) {
+usingNativeHardwareZoom = false;
+}
+
+if (measureVideo) {
+measureVideo.style.transform = usingNativeHardwareZoom ? 'scale(1)' : `scale(${zoomVal})`;
+}
+}
+
+function syncTouchCanvasSize() {
+if (!cameraTouchCanvas || !measureViewfinder) return;
+const rect = measureViewfinder.getBoundingClientRect();
+const w = Math.max(200, Math.round(rect.width));
+const h = Math.max(150, Math.round(rect.height));
+if (cameraTouchCanvas.width !== w || cameraTouchCanvas.height !== h) {
+cameraTouchCanvas.width = w;
+cameraTouchCanvas.height = h;
+}
+drawCameraTouchOverlay();
+}
+
+function setMeasureInputMode(mode) {
+measureInputMode = (mode === 'touch') ? 'touch' : 'aim';
+const btnAim = document.getElementById('btnModeAim');
+const btnTouch = document.getElementById('btnModeTouch');
+const crosshairH = document.getElementById('aimCrosshairH');
+const crosshairV = document.getElementById('aimCrosshairV');
+const crosshairCenter = document.getElementById('aimCrosshairCenter');
+const addBtn = document.getElementById('btnAddPointAction');
+
+if (measureInputMode === 'touch') {
+btnAim.classList.remove('active-aim');
+btnTouch.classList.add('active-touch');
+crosshairH.style.display = 'none';
+crosshairV.style.display = 'none';
+crosshairCenter.style.display = 'none';
+cameraTouchCanvas.style.display = 'block';
+projectedAreaBadge.style.display = 'block';
+addBtn.innerText = `👆 화면을 눌러 3~6점+ 추가 (${measuredPoints.length}점)`;
+setTimeout(syncTouchCanvasSize, 40);
+} else {
+btnTouch.classList.remove('active-touch');
+btnAim.classList.add('active-aim');
+crosshairH.style.display = 'block';
+crosshairV.style.display = 'block';
+crosshairCenter.style.display = 'block';
+cameraTouchCanvas.style.display = 'none';
+projectedAreaBadge.style.display = 'none';
+addBtn.innerHTML = `📍 현재 점 추가 (<span id="pointCountBadge">${measuredPoints.length}</span>점)`;
+}
+refreshPointsUIAndArea();
+}
 
 function getCorrectionFactor() {
 if (measurePositionMode !== 'outside') return 1.0;
@@ -1250,10 +1512,13 @@ stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }
 }
 measureVideo.srcObject = stream;
 await measureVideo.play();
+await setCameraZoom(cameraZoomLevel);
 measureSensorStatus.innerText = "카메라 연결됨 · 점을 추가하세요";
+setTimeout(syncTouchCanvasSize, 120);
 } catch (err) {
 console.error(err);
-measureSensorStatus.innerText = "카메라 미연결 시에도 거리 입력 가능";
+measureSensorStatus.innerText = "카메라 미연결 시에도 거리/터치 가능";
+setTimeout(syncTouchCanvasSize, 120);
 }
 }
 
@@ -1263,7 +1528,40 @@ if (lastCalculatedDistance > 0) {
 const distM = lastCalculatedDistance / 100;
 measureDistanceResult.innerText = `${lastCalculatedDistance.toFixed(1)} cm (${distM.toFixed(2)} m) | ${headingLabel}`;
 } else {
-measureDistanceResult.innerText = `바닥을 향해 기울여주세요 | ${headingLabel}`;
+measureDistanceResult.innerText = `바닥·작물 윗면을 향해 기울여주세요 | ${headingLabel}`;
+}
+}
+
+function recomputeTouchPointsFromScreen() {
+if (measureInputMode !== 'touch' || !cameraTouchCanvas) return;
+const heightM = Math.max(0.2, getEffectiveHeightCm() / 100);
+const tiltRad = ((currentTilt > 0 ? currentTilt : 45) * Math.PI) / 180;
+const baseDistM = Math.max(0.5, Math.min(25, heightM * Math.tan(Math.min(1.38, Math.max(0.25, tiltRad)))));
+
+measuredPoints = measuredPoints.map(pt => {
+if (typeof pt.nx !== 'number' || typeof pt.ny !== 'number') return pt;
+const dx = (pt.nx - 0.5) * 2;
+const dy = (0.5 - pt.ny) * 2;
+const verticalScale = Math.max(0.35, Math.min(2.2, 1 + dy * 0.55));
+const distM = Number((baseDistM * verticalScale).toFixed(2));
+const screenAngleDeg = ((Math.atan2(dx, Math.max(0.25, 1 + dy * 0.8)) * 180) / Math.PI + 360) % 360;
+const headingDeg = hasHeadingSensor
+? Number(((currentHeading + (dx * 35)) % 360).toFixed(1))
+: Number(screenAngleDeg.toFixed(1));
+return {
+...pt,
+distM,
+headingDeg
+};
+});
+}
+
+function onHeightOrTiltChange() {
+updateEffectiveHeightDisplay();
+calculateMeasureDistance();
+if (measureInputMode === 'touch' && measuredPoints.length > 0) {
+recomputeTouchPointsFromScreen();
+refreshPointsUIAndArea();
 }
 }
 
@@ -1290,11 +1588,11 @@ measureSensorStatus.innerText = "기울기 센서 미지원";
 }
 
 function calculateMeasureDistance() {
-const heightCm = parseFloat(measurePhoneHeightInput.value) || 0;
+const effHeightCm = getEffectiveHeightCm();
 let angleRad = (currentTilt * Math.PI) / 180;
 
-if (angleRad > 0 && angleRad < Math.PI / 2) {
-let distance = heightCm * Math.tan(angleRad);
+if (effHeightCm > 0 && angleRad > 0 && angleRad < Math.PI / 2) {
+let distance = effHeightCm * Math.tan(angleRad);
 if (distance > 0 && distance < 10000) {
 lastCalculatedDistance = distance;
 } else {
@@ -1340,7 +1638,43 @@ return null;
 return ((parsed % 360) + 360) % 360;
 }
 
+function addTouchPointAtClientXY(clientX, clientY) {
+if (!cameraTouchCanvas) return;
+syncTouchCanvasSize();
+const rect = cameraTouchCanvas.getBoundingClientRect();
+const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+const nx = rect.width > 0 ? x / rect.width : 0.5;
+const ny = rect.height > 0 ? y / rect.height : 0.5;
+
+const heightM = Math.max(0.2, getEffectiveHeightCm() / 100);
+const tiltRad = ((currentTilt > 0 ? currentTilt : 45) * Math.PI) / 180;
+const baseDistM = Math.max(0.5, Math.min(25, heightM * Math.tan(Math.min(1.38, Math.max(0.25, tiltRad)))));
+const dx = (nx - 0.5) * 2;
+const dy = (0.5 - ny) * 2;
+const verticalScale = Math.max(0.35, Math.min(2.2, 1 + dy * 0.55));
+const distM = Number((baseDistM * verticalScale).toFixed(2));
+const screenAngleDeg = ((Math.atan2(dx, Math.max(0.25, 1 + dy * 0.8)) * 180) / Math.PI + 360) % 360;
+const headingDeg = hasHeadingSensor
+? Number(((currentHeading + (dx * 35)) % 360).toFixed(1))
+: Number(screenAngleDeg.toFixed(1));
+
+measuredPoints.push({ distM, headingDeg, nx, ny });
+refreshPointsUIAndArea();
+}
+
+if (cameraTouchCanvas) {
+cameraTouchCanvas.addEventListener('click', (e) => {
+if (measureInputMode !== 'touch') return;
+addTouchPointAtClientXY(e.clientX, e.clientY);
+});
+}
+
 function addAutoPoint() {
+if (measureInputMode === 'touch') {
+alert('카메라 다각형 터치 모드입니다. 카메라 화면 위 원하는 지점(3~6점+)을 직접 눌러 주세요.');
+return;
+}
 const distM = promptDistanceOrUseLive();
 if (distM === null) return;
 const headingDeg = promptHeadingOrUseLive(measuredPoints.length);
@@ -1373,6 +1707,7 @@ lastCalculatedAreaSqm = 0;
 lastCalculatedAreaText = '';
 document.getElementById('evenAngleModeCheck').checked = false;
 setMeasurePositionMode('inside');
+updateEffectiveHeightDisplay();
 refreshPointsUIAndArea();
 }
 
@@ -1420,8 +1755,11 @@ const modeLabel = getModeTagLabel();
 if (n < 2) {
 lastCalculatedAreaSqm = 0;
 lastCalculatedAreaText = '';
-captionEl.innerText = `${modeLabel} · 현재 ${n}점 찍힘 (2점 또는 3~7점+ 필요)`;
+captionEl.innerText = `${modeLabel} · 현재 ${n}점 찍힘 (${measureInputMode === 'touch' ? '3~6점+ 터치' : '2점 또는 3~7점+'})`;
 resultEl.innerText = '0.0㎡ (0.0평)';
+if (projectedAreaBadge) {
+projectedAreaBadge.innerText = `카메라 터치(${cameraZoomLevel.toFixed(1)}x): 점을 ${Math.max(0, 3 - n)}개 더 누르세요 (${n}점)`;
+}
 return;
 }
 
@@ -1436,6 +1774,9 @@ lastCalculatedAreaSqm = areaSqm;
 lastCalculatedAreaText = `${areaSqm.toFixed(1)}㎡ (${areaPyeong.toFixed(1)}평)`;
 captionEl.innerText = `${modeLabel} · 2점 직사각형(${d1.toFixed(2)}m×${d2.toFixed(2)}m)`;
 resultEl.innerText = lastCalculatedAreaText;
+if (projectedAreaBadge) {
+projectedAreaBadge.innerText = `카메라 터치(${n}점): 1점 더 누르면 다각형 면적 투영`;
+}
 return;
 }
 
@@ -1455,6 +1796,63 @@ lastCalculatedAreaSqm = areaSqm;
 lastCalculatedAreaText = `${areaSqm.toFixed(1)}㎡ (${areaPyeong.toFixed(1)}평)`;
 captionEl.innerText = `${modeLabel} · ${n}점 ${useEvenAngle ? '균등각도' : '방위각'} 다각형`;
 resultEl.innerText = lastCalculatedAreaText;
+if (projectedAreaBadge) {
+projectedAreaBadge.innerText = `투영 면적(${n}점 · ${modeLabel}): ${lastCalculatedAreaText}`;
+}
+}
+
+function drawCameraTouchOverlay() {
+if (!cameraTouchCtx || !cameraTouchCanvas) return;
+const w = cameraTouchCanvas.width;
+const h = cameraTouchCanvas.height;
+cameraTouchCtx.clearRect(0, 0, w, h);
+
+if (measureInputMode !== 'touch') return;
+
+const touchPts = measuredPoints.filter(p => typeof p.nx === 'number' && typeof p.ny === 'number');
+if (touchPts.length === 0) {
+cameraTouchCtx.fillStyle = "rgba(255, 255, 255, 0.85)";
+cameraTouchCtx.font = "bold 12px sans-serif";
+cameraTouchCtx.textAlign = "center";
+cameraTouchCtx.fillText("원하는 지점 3~6곳+을 순서대로 터치하세요", w / 2, h / 2 + 6);
+return;
+}
+
+const coords = touchPts.map(p => ({ x: p.nx * w, y: p.ny * h }));
+
+if (coords.length >= 2) {
+cameraTouchCtx.strokeStyle = "#ff1744";
+cameraTouchCtx.lineWidth = 2.5;
+cameraTouchCtx.beginPath();
+cameraTouchCtx.moveTo(coords[0].x, coords[0].y);
+for (let i = 1; i < coords.length; i++) {
+cameraTouchCtx.lineTo(coords[i].x, coords[i].y);
+}
+if (coords.length >= 3) {
+cameraTouchCtx.closePath();
+cameraTouchCtx.fillStyle = "rgba(255, 23, 68, 0.24)";
+cameraTouchCtx.fill();
+}
+cameraTouchCtx.stroke();
+}
+
+coords.forEach((pt, i) => {
+cameraTouchCtx.fillStyle = "#ff1744";
+cameraTouchCtx.beginPath();
+cameraTouchCtx.arc(pt.x, pt.y, 10, 0, 2 * Math.PI);
+cameraTouchCtx.fill();
+cameraTouchCtx.lineWidth = 2;
+cameraTouchCtx.strokeStyle = "#ffffff";
+cameraTouchCtx.stroke();
+
+cameraTouchCtx.fillStyle = "#ffffff";
+cameraTouchCtx.font = "bold 11px sans-serif";
+cameraTouchCtx.textAlign = "center";
+cameraTouchCtx.textBaseline = "middle";
+cameraTouchCtx.fillText(String(i + 1), pt.x, pt.y + 0.5);
+});
+cameraTouchCtx.textAlign = "start";
+cameraTouchCtx.textBaseline = "alphabetic";
 }
 
 function drawPolygonOverlayOnContext(targetCtx, w, h, options = {}) {
@@ -1569,10 +1967,17 @@ drawGrid: true
 }
 
 function refreshPointsUIAndArea() {
-document.getElementById('pointCountBadge').innerText = measuredPoints.length;
+const badge = document.getElementById('pointCountBadge');
+if (badge) badge.innerText = measuredPoints.length;
+const addBtn = document.getElementById('btnAddPointAction');
+if (addBtn && measureInputMode === 'touch') {
+addBtn.innerText = `👆 화면을 눌러 3~6점+ 추가 (${measuredPoints.length}점)`;
+}
 const listEl = document.getElementById('pointListBox');
 if (measuredPoints.length === 0) {
-listEl.innerHTML = '한 자리에 서서 한 방향으로 점을 2개(직각폭) 또는 3~7개 이상 찍으세요. 번호를 누르면 현재 거리로 덮어씁니다.';
+listEl.innerHTML = measureInputMode === 'touch'
+? '카메라 화면을 3~6곳+ 터치하면 빨간 점·다각형과 면적이 카메라에 바로 투영됩니다.'
+: '한 자리에 서서 한 방향으로 점을 2개(직각폭) 또는 3~7개 이상 찍으세요. 번호를 누르면 현재 거리로 덮어씁니다.';
 } else {
 listEl.innerHTML = measuredPoints.map((p, i) =>
 `<div><button type="button" class="pt-chip-btn" onclick="overwritePoint(${i})">${i + 1}번 수정</button> ${p.distM.toFixed(2)}m (${p.headingDeg.toFixed(0)}°)</div>`
@@ -1580,6 +1985,7 @@ listEl.innerHTML = measuredPoints.map((p, i) =>
 }
 calculateAutoArea();
 drawPolygonPreview();
+drawCameraTouchOverlay();
 }
 
 function applyAreaToCropForm() {
@@ -1587,7 +1993,10 @@ if (!lastCalculatedAreaText) {
 alert('점을 2개(직각폭) 또는 3개 이상 찍어 면적을 먼저 계산해 주세요.');
 return;
 }
-const appliedText = `${lastCalculatedAreaText} [${getModeTagLabel()}]`;
+const modeKind = measureInputMode === 'touch' ? '터치다각형' : '조준측정';
+const cropCm = getCropHeightCm();
+const cropTag = cropCm > 0 ? `·작물${cropCm.toFixed(0)}cm` : '';
+const appliedText = `${lastCalculatedAreaText} [${modeKind}·${getModeTagLabel()}${cropTag}]`;
 switchTab('crop');
 document.getElementById('crop-area').value = appliedText;
 resetAutoPoints();
@@ -1597,6 +2006,8 @@ alert(`계산된 면적 [${appliedText}]이(가) 입력칸에 적용되었습니
 
 function openMeasureModal() {
 resetAutoPoints();
+setMeasureInputMode('aim');
+setCameraZoom(1.0);
 document.getElementById('measureModal').style.display = 'flex';
 initMeasureCamera();
 }
@@ -1606,6 +2017,25 @@ document.getElementById('measureModal').style.display = 'none';
 if (measureVideo.srcObject) {
 measureVideo.srcObject.getTracks().forEach(track => track.stop());
 measureVideo.srcObject = null;
+}
+}
+
+function drawZoomedVideoFrame(targetCtx, w, h) {
+if (measureVideo.videoWidth > 0) {
+const vw = measureVideo.videoWidth;
+const vh = measureVideo.videoHeight;
+if (!usingNativeHardwareZoom && cameraZoomLevel > 1.0) {
+const sw = vw / cameraZoomLevel;
+const sh = vh / cameraZoomLevel;
+const sx = (vw - sw) / 2;
+const sy = (vh - sh) / 2;
+targetCtx.drawImage(measureVideo, sx, sy, sw, sh, 0, 0, w, h);
+} else {
+targetCtx.drawImage(measureVideo, 0, 0, w, h);
+}
+} else {
+targetCtx.fillStyle = "#1a1a1a";
+targetCtx.fillRect(0, 0, w, h);
 }
 }
 
@@ -1624,15 +2054,11 @@ canvasCapture.height = h;
 const ctxCapture = canvasCapture.getContext('2d');
 
 try {
-if (measureVideo.videoWidth > 0) {
-ctxCapture.drawImage(measureVideo, 0, 0, w, h);
-} else {
-ctxCapture.fillStyle = "#1a1a1a";
-ctxCapture.fillRect(0, 0, w, h);
-}
+drawZoomedVideoFrame(ctxCapture, w, h);
 
 const cx = w / 2;
 const cy = h / 2;
+if (measureInputMode !== 'touch') {
 ctxCapture.strokeStyle = "#00ffcc";
 ctxCapture.lineWidth = Math.max(2, w / 220);
 ctxCapture.beginPath();
@@ -1645,14 +2071,50 @@ ctxCapture.stroke();
 ctxCapture.beginPath();
 ctxCapture.arc(cx, cy, 24, 0, 2 * Math.PI);
 ctxCapture.stroke();
+}
 
-if (n > 0) {
-const overlaySize = Math.min(w, h) * 0.48;
-const ox = (w - overlaySize) / 2;
-const oy = (h - overlaySize) / 2;
+const touchPts = measuredPoints.filter(p => typeof p.nx === 'number' && typeof p.ny === 'number');
+if (measureInputMode === 'touch' && touchPts.length > 0) {
+const coords = touchPts.map(p => ({ x: p.nx * w, y: p.ny * h }));
+if (coords.length >= 2) {
+ctxCapture.strokeStyle = "#ff1744";
+ctxCapture.lineWidth = Math.max(3, w / 180);
+ctxCapture.beginPath();
+ctxCapture.moveTo(coords[0].x, coords[0].y);
+for (let i = 1; i < coords.length; i++) {
+ctxCapture.lineTo(coords[i].x, coords[i].y);
+}
+if (coords.length >= 3) {
+ctxCapture.closePath();
+ctxCapture.fillStyle = "rgba(255, 23, 68, 0.24)";
+ctxCapture.fill();
+}
+ctxCapture.stroke();
+}
+const ptR = Math.max(11, Math.round(Math.min(w, h) * 0.028));
+ctxCapture.font = `bold ${Math.max(12, Math.round(ptR * 1.15))}px sans-serif`;
+ctxCapture.textAlign = "center";
+ctxCapture.textBaseline = "middle";
+coords.forEach((pt, i) => {
+ctxCapture.fillStyle = "#ff1744";
+ctxCapture.beginPath();
+ctxCapture.arc(pt.x, pt.y, ptR, 0, 2 * Math.PI);
+ctxCapture.fill();
+ctxCapture.lineWidth = 2;
+ctxCapture.strokeStyle = "#ffffff";
+ctxCapture.stroke();
+ctxCapture.fillStyle = "#ffffff";
+ctxCapture.fillText(String(i + 1), pt.x, pt.y + 0.5);
+});
+ctxCapture.textAlign = "start";
+ctxCapture.textBaseline = "alphabetic";
+} else if (n > 0) {
+const overlaySize = Math.min(w, h) * 0.44;
+const ox = w - overlaySize - 12;
+const oy = 12;
 ctxCapture.save();
 ctxCapture.translate(ox, oy);
-ctxCapture.fillStyle = "rgba(0, 0, 0, 0.45)";
+ctxCapture.fillStyle = "rgba(0, 0, 0, 0.48)";
 ctxCapture.fillRect(0, 0, overlaySize, overlaySize);
 ctxCapture.strokeStyle = "rgba(255, 82, 82, 0.85)";
 ctxCapture.lineWidth = 2;
@@ -1670,14 +2132,20 @@ labelColor: "#ffffff"
 ctxCapture.restore();
 }
 
+const phoneCm = getPhoneHeightCm();
+const cropCm = getCropHeightCm();
+const effCm = getEffectiveHeightCm();
 const modeLabel = getModeTagLabel();
+const modeKind = measureInputMode === 'touch' ? '터치투영' : '조준측정';
+const zoomTag = cameraZoomLevel > 1.0 ? ` · ${cameraZoomLevel.toFixed(1)}x` : '';
+const cropTag = cropCm > 0 ? ` · 작물${cropCm.toFixed(0)}cm` : '';
 const summaryLabel = lastCalculatedAreaText
-? `${n}점 (${modeLabel}): ${lastCalculatedAreaText}`
-: `측정 거리: ${lastCalculatedDistance.toFixed(1)} cm (${new Date().toISOString().slice(0,10)})`;
+? `${n}점 (${modeKind}·${modeLabel}${zoomTag}${cropTag}): ${lastCalculatedAreaText}`
+: `측정 거리${zoomTag}${cropTag}: ${lastCalculatedDistance.toFixed(1)} cm (${new Date().toISOString().slice(0,10)})`;
 
 const fontSize = Math.max(16, Math.floor(w / 26));
 ctxCapture.font = `bold ${fontSize}px sans-serif`;
-ctxCapture.fillStyle = "rgba(0, 0, 0, 0.7)";
+ctxCapture.fillStyle = "rgba(0, 0, 0, 0.72)";
 ctxCapture.fillRect(0, h - fontSize * 2.2, w, fontSize * 2.2);
 ctxCapture.fillStyle = "#00ffcc";
 ctxCapture.textAlign = "center";
@@ -1686,10 +2154,10 @@ ctxCapture.fillText(summaryLabel, cx, h - fontSize * 0.7);
 const dataURL = canvasCapture.toDataURL('image/png');
 
 let recordCategory = '거리측정';
-let recordItem = `거리 ${lastCalculatedDistance.toFixed(1)}cm`;
+let recordItem = `거리 ${lastCalculatedDistance.toFixed(1)}cm${cropCm > 0 ? ` (작물 ${cropCm.toFixed(0)}cm)` : ''}`;
 let recordVal = lastCalculatedDistance;
 let recordText = `${lastCalculatedDistance.toFixed(1)} cm`;
-let pointDetailsText = '';
+let pointDetailsText = `폰 높이: ${phoneCm.toFixed(0)}cm · 작물 높이: ${cropCm.toFixed(0)}cm · 적용 높이차: ${effCm.toFixed(0)}cm${zoomTag ? ` · 배율: ${cameraZoomLevel.toFixed(1)}x` : ''}`;
 
 if (lastCalculatedAreaText) {
 const useEvenAngle = document.getElementById('evenAngleModeCheck').checked;
@@ -1698,10 +2166,10 @@ recordCategory = '면적측정';
 recordVal = Number(lastCalculatedAreaSqm.toFixed(2));
 recordText = lastCalculatedAreaText;
 const edgeSummaryShort = edges.map(e => `${e.label}:${e.lengthM.toFixed(2)}m`).join(' · ');
-recordItem = `${n}점 ${modeLabel} (${edgeSummaryShort})`;
+recordItem = `${n}점 ${modeKind} (${edgeSummaryShort})`;
 const ptsLine = measuredPoints.map((p, i) => `${i + 1}번: ${p.distM.toFixed(2)}m (${p.headingDeg.toFixed(0)}°)`).join(' · ');
 const edgesLine = edges.map(e => `${e.label} 거리: ${e.lengthM.toFixed(2)}m`).join(' · ');
-pointDetailsText = `측정 위치: ${modeLabel}<br>변 길이: ${edgesLine}<br>점 위치: ${ptsLine}`;
+pointDetailsText = `측정 방식: ${modeKind} (${modeLabel}${zoomTag}) · 폰 ${phoneCm.toFixed(0)}cm / 작물 ${cropCm.toFixed(0)}cm (적용 ${effCm.toFixed(0)}cm)<br>변 길이: ${edgesLine}<br>점 위치: ${ptsLine}`;
 }
 
 allFarmData[currentFarmId].push({
@@ -1716,7 +2184,7 @@ pointDetails: pointDetailsText
 });
 
 if (lastCalculatedAreaText) {
-document.getElementById('crop-area').value = `${lastCalculatedAreaText} [${modeLabel}]`;
+document.getElementById('crop-area').value = `${lastCalculatedAreaText} [${modeKind}·${modeLabel}${cropTag}]`;
 }
 
 autoSaveAndBackup();
